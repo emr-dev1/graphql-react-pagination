@@ -14,7 +14,7 @@ const RateLimit = new GraphQLObjectType({
 	name: 'RateLimit',
 	description: `Represents the client's rate limit.`,
 	fields: () => ({
-
+		
 	})
 });
 

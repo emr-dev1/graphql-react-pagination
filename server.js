@@ -4,9 +4,13 @@ const schema = require('./graphql/schema');
 
 const app = express();
 
-app.use('/graphql', expressGraphQL(req => ({
+app.use('/graphql', expressGraphQL((req) => ({
 	schema,
-	graphiql: true
+	graphiql: true,
+	context: {
+		request: req,
+		limit: 50
+	}
 })));
 
 app.listen(3000, () => {

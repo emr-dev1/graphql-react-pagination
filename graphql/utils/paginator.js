@@ -12,3 +12,6 @@ exports.encodeCursor = (cursor) => Buffer.from(cursor).toString('base64');
  */
 exports.decodeCursor = (cursor) => Buffer.from(cursor, 'base64').toString('ascii');
 
+exports.generateQuery = (args) => {
+	
+}

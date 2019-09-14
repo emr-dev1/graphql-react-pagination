@@ -15,6 +15,11 @@ const {
 	BusinessConnectionType,
 } = require('./types');
 
+const {
+	encodeCursor,
+	decodeCursor,
+} = require('./utils/paginator');
+
 module.exports = new GraphQLObjectType({
 	name: 'RootQuery',
 	fields: {
@@ -43,6 +48,8 @@ module.exports = new GraphQLObjectType({
 			}
 		},
 		businessConnection: {
+			// There needs to be a set rate limit for the number of elements that
+			// can be retireved at a time.
 			type: BusinessConnectionType,
 			description: 'Look up businesses, must provide first or last to properly paginate',
 			args: {
@@ -65,24 +72,79 @@ module.exports = new GraphQLObjectType({
 					description: 'Returns the last n elements from the list',
 				},
 			},
-			resolve(parent, args, context, info) {
-				// TODO: need to resolve: pageInfo, edges, nodes, and totalCount
+			async resolve(parent, args, context, info) {
 				const totalCountQuery = 'select count(*) from management_system.businesses order by business_id';
+				const totalCount = (await db.conn.one(totalCountQuery)).count;
 
-				// TODO: check whether first or last provided in the args
-				// TODO: check whether after or before is provided in the args
-				// TODO: construct sql query with provided args
+				let query;
+
+				let numberOfElements;
+				if (args.first && !args.last) {
+					// use the first n elements in the array
+					numberOfElements = args.first;
+				} else if (!first && last) {
+					// use the last n elements in the array
+					numberOfElements = args.last;
+				} else {
+					// throw an error
+				}
 				
-				// TODO: determine what unique identifier will act as the cursor (ID)
-				// TODO: encode the cursors for each type
-				// edge = cursor and node
-				// node = [BusinessType]
-				// TODO: set the edges with their respective cursor
-				// TODO: set the nodes to the array of businesses
-				// TODO: get the start and ending cursors
-				// TODO: set the next and previous page booleans
+				let decodedCursor;
+				if (args.after && !args.before) {
+					// elements after specified cursor, decode
+					decodedCursor = decodeCursor(args.after);
+					query = `
+						select
+							TOP(${numberOfElements}) * 
+						from 
+							management_system.businesses
+						where
+							business_id >= ${decodedCursor}
+						order by business_id
+						limit ${context.limit};
+					`;
+				} else if (!args.after && args.before) {
+					// elements before specified cursor, decode
+					decodedCursor = decodeCursor(args.before)
+					query = `
+						select 
+							TOP(${numberOfElements}) *
+						from
+							management_system.businesses
+						where
+							business_id < ${decodedCursor}
+						order by business_id desc
+						limit ${context.limit}
+					`;
+				}
+
+				const businesses = await db.conn.manyOrNone(query);
+				
+				// for now going to use the "business_id" as the cursor
+				const edges = businesses.map((business) => {
+					const encodedCursor = encodeCursor(business.business_id);
+					return {
+						cursor: encodedCursor,
+						node: { ...business }
+					}
+				});
+				const startCursor = edges[0].cursor;
+				const endCursor = edges[edges.length - 1].cursor;
+				const hasNextPage = true;
+				const hasPreviousPage = false;
 
 				// TODO: return an object with the correct structure
+				return {
+					pageInfo: {
+						startCursor,
+						endCursor,
+						hasNextPage,
+						hasPreviousPage
+					},
+					edges,
+					nodes: businesses,
+					totalCount: parseInt(totalCount, 10)
+				};
 			}
 		}
 	}
