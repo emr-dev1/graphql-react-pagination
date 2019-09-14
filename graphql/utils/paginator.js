@@ -14,34 +14,34 @@ exports.encodeCursor = cursor => Buffer.from(cursor).toString('base64');
  */
 exports.decodeCursor = cursor => Buffer.from(cursor, 'base64').toString('ascii');
 
-exports.generateQuery = (table, filter, ...args) => {
+exports.generateQuery = (table, limit, ...args) => {
 	const { first, last, beforeCursor, afterCursor } = args;
 
 	let numberOfElements;
 	if (first && !last) {
-		numberOfElements = ``;
+		numberOfElements = `TOP(${first})`;
 	} else if (!first && last) {
-		numberOfElements = ``;
-	} else {
-		// TODO: throw an arror
+		numberOfElements = `TOP(${last})`;
 	}
 
 	let cursorQuery;
+	let filter = '';
 	if (beforeCursor) {
-		cursorQuery = `${beforeCursor}`;
+		cursorQuery = `< ${beforeCursor}`;
+		filter = 'business_id desc';
 	} else if (afterCursor) {
-		cursorQuery = ``;
-	}
-
-	let order;
-	if (filter) {
-		order = `${filter} `;
+		cursorQuery = `>= ${afterCursor}`;
+		filter = 'business_id';
 	}
 
 	return `
-		select * 
-		from 
+		select
+			${numberOfElements} *
+		from
 			management_system.${table}
-		order by${filter}
+		where
+			business_id ${cursorQuery}
+		order by ${filter}
+		limit ${limit}
 	`;
 };

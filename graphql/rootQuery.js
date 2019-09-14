@@ -20,6 +20,7 @@ const {
 const {
 	encodeCursor,
 	decodeCursor,
+	generateQuery,
 } = require('./utils/paginator');
 
 module.exports = new GraphQLObjectType({
@@ -33,7 +34,6 @@ module.exports = new GraphQLObjectType({
 				filter: { type: GraphQLString }
 			},
 			resolve(parent, { first, offset, filter }, context, info) {
-				console.log(info);
 				const query = `
 					select *
 					from
@@ -49,7 +49,6 @@ module.exports = new GraphQLObjectType({
 					.catch(err => `The error is ${err}`);
 			}
 		},
-		// TODO: design and formulate the filters for the connection.
 		businessConnection: {
 			// There needs to be a set rate limit for the number of elements that
 			// can be retireved at a time.
@@ -85,7 +84,7 @@ module.exports = new GraphQLObjectType({
 				if (args.first && !args.last) {
 					// use the first n elements in the array
 					numberOfElements = args.first;
-				} else if (!first && last) {
+				} else if (!args.first && args.last) {
 					// use the last n elements in the array
 					numberOfElements = args.last;
 				} else {
