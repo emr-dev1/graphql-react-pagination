@@ -1,3 +1,5 @@
+'use strict';
+
 const pgPromise = require('pg-promise');
 const pgp = pgPromise({});
 const config = require('../../config');

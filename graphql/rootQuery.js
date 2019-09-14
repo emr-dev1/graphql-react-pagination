@@ -1,3 +1,5 @@
+'use strict';
+
 const {
 	GraphQLSchema,
 	GraphQLObjectType,
@@ -24,7 +26,7 @@ module.exports = new GraphQLObjectType({
 	name: 'RootQuery',
 	fields: {
 		businesses: {
-			type: new GraphQLList(BusinessesType),
+			type: new GraphQLList(BusinessType),
 			args: {
 				first: { type: GraphQLInt },
 				offset: { type: GraphQLInt },
@@ -47,6 +49,7 @@ module.exports = new GraphQLObjectType({
 					.catch(err => `The error is ${err}`);
 			}
 		},
+		// TODO: design and formulate the filters for the connection.
 		businessConnection: {
 			// There needs to be a set rate limit for the number of elements that
 			// can be retireved at a time.
@@ -73,11 +76,11 @@ module.exports = new GraphQLObjectType({
 				},
 			},
 			async resolve(parent, args, context, info) {
-				const totalCountQuery = 'select count(*) from management_system.businesses order by business_id';
+				const totalCountQuery = 'select count(*) from management_system.businesses';
 				const totalCount = (await db.conn.one(totalCountQuery)).count;
 
+				// TODO: refactor the way the query is formed: 79-119
 				let query;
-
 				let numberOfElements;
 				if (args.first && !args.last) {
 					// use the first n elements in the array
@@ -86,9 +89,10 @@ module.exports = new GraphQLObjectType({
 					// use the last n elements in the array
 					numberOfElements = args.last;
 				} else {
-					// throw an error
+					// TODO: throw an error
 				}
-				
+
+				query = `select * from management_system.businesses limit ${context.limit}`;
 				let decodedCursor;
 				if (args.after && !args.before) {
 					// elements after specified cursor, decode
@@ -105,7 +109,7 @@ module.exports = new GraphQLObjectType({
 					`;
 				} else if (!args.after && args.before) {
 					// elements before specified cursor, decode
-					decodedCursor = decodeCursor(args.before)
+					decodedCursor = decodeCursor(args.before);
 					query = `
 						select 
 							TOP(${numberOfElements}) *
@@ -119,21 +123,22 @@ module.exports = new GraphQLObjectType({
 				}
 
 				const businesses = await db.conn.manyOrNone(query);
-				
+
 				// for now going to use the "business_id" as the cursor
 				const edges = businesses.map((business) => {
-					const encodedCursor = encodeCursor(business.business_id);
+					const encodedCursor = encodeCursor(`${business.business_id}`);
 					return {
 						cursor: encodedCursor,
 						node: { ...business }
-					}
+					};
 				});
+
 				const startCursor = edges[0].cursor;
 				const endCursor = edges[edges.length - 1].cursor;
+				// TODO: refactor how next/previous page's values are generated
 				const hasNextPage = true;
 				const hasPreviousPage = false;
 
-				// TODO: return an object with the correct structure
 				return {
 					pageInfo: {
 						startCursor,

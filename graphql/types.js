@@ -1,3 +1,5 @@
+'use strict';
+
 const {
 	GraphQLObjectType,
 	GraphQLBoolean,
@@ -14,7 +16,7 @@ const RateLimit = new GraphQLObjectType({
 	name: 'RateLimit',
 	description: `Represents the client's rate limit.`,
 	fields: () => ({
-		
+
 	})
 });
 
@@ -31,7 +33,7 @@ const PageInfoType = new GraphQLObjectType({
 			description: 'When paginating forwards, the cursor to continue.'
 		},
 		hasNextPage: {
-			type: GraphQLBoolean, 
+			type: GraphQLBoolean,
 			description: 'When paginating forward, are there more items?'
 		},
 		hasPreviousPage: {
@@ -44,13 +46,34 @@ const PageInfoType = new GraphQLObjectType({
 const BusinessType = new GraphQLObjectType({
 	name: 'Business',
 	fields: () => ({
-		business_id: { type: GraphQLID },
-		name: { type: GraphQLString },
-		phone_number: { type: GraphQLString },
-		state: { type: GraphQLString },
-		address: { type: GraphQLString },
-		latitude: { type: GraphQLString },
-		longitude: { type: GraphQLString },
+		business_id: {
+			type: GraphQLID,
+			description: 'The unique ID of the business'
+		},
+		name: {
+			type: GraphQLString,
+			description: 'The business name'
+		},
+		phone_number: {
+			type: GraphQLString,
+			description: 'The phone number of the business'
+		},
+		state: {
+			type: GraphQLString,
+			description: 'The state which the business is located'
+		},
+		address: {
+			type: GraphQLString,
+			description: 'The street address of the business'
+		},
+		latitude: {
+			type: GraphQLString,
+			description: 'The latitude of the business'
+		},
+		longitude: {
+			type: GraphQLString,
+			description: 'The longitude of the business'
+		},
 	})
 });
 
