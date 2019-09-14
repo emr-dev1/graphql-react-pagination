@@ -10,6 +10,14 @@ const {
 
 const { db } = require('./utils/dbConnection');
 
+const RateLimit = new GraphQLObjectType({
+	name: 'RateLimit',
+	description: `Represents the client's rate limit.`,
+	fields: () => ({
+
+	})
+});
+
 const PageInfoType = new GraphQLObjectType({
 	name: 'PageInfo',
 	description: 'Provides information about pagaination in a connection.',
