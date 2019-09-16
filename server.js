@@ -1,10 +1,16 @@
+'use strict';
+
 const expressGraphQL = require('express-graphql');
+const http = require('http');
 const express = require('express');
+const cors = require('cors');
 const schema = require('./graphql/schema');
 
 const app = express();
 
-app.use('/graphql', expressGraphQL((req) => ({
+app.use(cors());
+
+app.use('/', expressGraphQL(req => ({
 	schema,
 	graphiql: true,
 	context: {
@@ -13,6 +19,5 @@ app.use('/graphql', expressGraphQL((req) => ({
 	}
 })));
 
-app.listen(3000, () => {
-	console.log('server started on port 3000');
-});
+const server = http.createServer(app);
+server.listen(3000);

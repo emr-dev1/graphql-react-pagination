@@ -1,13 +1,10 @@
 'use strict';
 
 const {
-	GraphQLSchema,
 	GraphQLObjectType,
-	GraphQLBoolean,
 	GraphQLInt,
 	GraphQLString,
 	GraphQLList,
-	GraphQLID,
 } = require('graphql');
 
 const { db } = require('./utils/dbConnection');
@@ -19,9 +16,11 @@ const {
 
 const {
 	encodeCursor,
-	decodeCursor,
-	generateQuery,
 } = require('./utils/paginator');
+
+const {
+	generatePaginationQuery,
+} = require('./utils/queryGenerator');
 
 module.exports = new GraphQLObjectType({
 	name: 'RootQuery',
@@ -56,11 +55,11 @@ module.exports = new GraphQLObjectType({
 			description: 'Look up businesses, must provide first or last to properly paginate',
 			args: {
 				after: {
-					type: GraphQLInt,
+					type: GraphQLString,
 					description: 'Returns the elements that come after the specified cursor',
 				},
 				before: {
-					type: GraphQLInt,
+					type: GraphQLString,
 					description: 'Returns the elements in the list that come before the specified cursor',
 				},
 				// REQUIRED TO PROPERLY PAGINATE
@@ -74,53 +73,11 @@ module.exports = new GraphQLObjectType({
 					description: 'Returns the last n elements from the list',
 				},
 			},
-			async resolve(parent, args, context, info) {
+			async resolve(_, args, context) {
 				const totalCountQuery = 'select count(*) from management_system.businesses';
 				const totalCount = (await db.conn.one(totalCountQuery)).count;
-
-				// TODO: refactor the way the query is formed: 79-119
-				let query;
-				let numberOfElements;
-				if (args.first && !args.last) {
-					// use the first n elements in the array
-					numberOfElements = args.first;
-				} else if (!args.first && args.last) {
-					// use the last n elements in the array
-					numberOfElements = args.last;
-				} else {
-					// TODO: throw an error
-				}
-
-				query = `select * from management_system.businesses limit ${context.limit}`;
-				let decodedCursor;
-				if (args.after && !args.before) {
-					// elements after specified cursor, decode
-					decodedCursor = decodeCursor(args.after);
-					query = `
-						select
-							TOP(${numberOfElements}) * 
-						from 
-							management_system.businesses
-						where
-							business_id >= ${decodedCursor}
-						order by business_id
-						limit ${context.limit};
-					`;
-				} else if (!args.after && args.before) {
-					// elements before specified cursor, decode
-					decodedCursor = decodeCursor(args.before);
-					query = `
-						select 
-							TOP(${numberOfElements}) *
-						from
-							management_system.businesses
-						where
-							business_id < ${decodedCursor}
-						order by business_id desc
-						limit ${context.limit}
-					`;
-				}
-
+				const query = generatePaginationQuery('management_system.businesses', 'business_id', context.limit, args);
+				console.log(query);
 				const businesses = await db.conn.manyOrNone(query);
 
 				// for now going to use the "business_id" as the cursor
@@ -132,10 +89,10 @@ module.exports = new GraphQLObjectType({
 					};
 				});
 
+				const amount = args.first ? args.first : args.last;
 				const startCursor = edges[0].cursor;
 				const endCursor = edges[edges.length - 1].cursor;
-				// TODO: refactor how next/previous page's values are generated
-				const hasNextPage = true;
+				const hasNextPage = amount - businesses.length === 0;
 				const hasPreviousPage = false;
 
 				return {
